@@ -1,0 +1,4 @@
+build
+
+cmd/items-api/items-api
+cmd/items-worker/items-worker
