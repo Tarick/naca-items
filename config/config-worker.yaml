@@ -29,13 +29,9 @@ database:
 
 consume:
   nsqlookup: "nsq-nsqlookupd:4161"
-  topic: "items_process"
+  topic: "new-items-process"
   channel: "ItemsProcess"
   # prefetch (in flight) messages should be bigger than workers
   prefetch: 1
   workers: 1
   attempts: 1
-
-publish:
-  host: "nsq-nsqd:4150"
-  topic: "items_published"

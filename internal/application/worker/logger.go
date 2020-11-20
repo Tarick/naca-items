@@ -1,5 +1,4 @@
-// Package logger implements initialisation of Uber zap.Logger.
-package logger
+package worker
 
 // Logger interface
 type Logger interface {

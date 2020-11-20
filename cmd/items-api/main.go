@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/Tarick/naca-rss-feeds/docs"
-	"github.com/Tarick/naca-rss-feeds/internal/logger/zaplogger"
+	_ "github.com/Tarick/naca-items/docs"
+	"github.com/Tarick/naca-items/internal/logger/zaplogger"
 
-	"github.com/Tarick/naca-rss-feeds/internal/application/server"
-	"github.com/Tarick/naca-rss-feeds/internal/messaging"
-	"github.com/Tarick/naca-rss-feeds/internal/messaging/nsqclient/producer"
-	"github.com/Tarick/naca-rss-feeds/internal/repository/postgresql"
-	"github.com/Tarick/naca-rss-feeds/internal/version"
+	"github.com/Tarick/naca-items/internal/application/server"
+	"github.com/Tarick/naca-items/internal/messaging"
+	"github.com/Tarick/naca-items/internal/messaging/nsqclient/producer"
+	"github.com/Tarick/naca-items/internal/repository/postgresql"
+	"github.com/Tarick/naca-items/internal/version"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -24,7 +24,7 @@ func main() {
 
 	// rootCmd represents the base command when called without any subcommands
 	rootCmd := &cobra.Command{
-		Use:   "rss-feeds-api",
+		Use:   "items-api",
 		Short: "RSS Feeds API",
 		Long:  `RSS Feeds API`,
 		Run: func(cmd *cobra.Command, args []string) {

@@ -71,13 +71,14 @@ func (repository *ItemsRepository) Create(item *entity.Item) error {
 	_, err := repository.pool.Exec(context.Background(), `insert into items (
 		uuid,
 		publication_uuid,
+		published_date,
 		description,
 		content,
 		source,
 		author,
 		language_code,
-		status) values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		item.UUID, item.PublicationUUID, item.Description, item.Content, item.Source, item.Author, item.LanguageCode, "new")
+		state_id) select $1, $2, $3, $4, $5, $6, $7, $8, id from item_state where type="valid")`,
+		item.UUID, item.PublicationUUID, item.PublishedDate, item.Description, item.Content, item.Source, item.Author, item.LanguageCode)
 	return err
 }
 

@@ -3,13 +3,13 @@
 {{ template "migrations/shared/trigger_set_timestamp.sql" . }}
 
 
-create table item_status (
+create table item_state (
+  id int not null UNIQUE,
   type text not null UNIQUE
   );
 
-insert into item_status (type) values('new');
-insert into item_status (type) values('ready');
-insert into item_status (type) values('disabled');
+insert into item_state (id, type) values(0, 'disabled');
+insert into item_state (id, type) values(1, 'valid');
 
 create table world_languages (
   alpha2 varchar(2) primary key,
@@ -203,13 +203,15 @@ insert into world_languages values
 
 create table items (
   uuid uuid PRIMARY KEY,
+  title TEXT NOT NULL,
   description TEXT NOT NULL,
   author TEXT NOT NULL,
   language_code varchar(2) NOT NULL REFERENCES world_languages(alpha2),
   publication_uuid uuid NOT NULL,
+  published_date timestamptz NOT NULL,
   content TEXT NOT NULL,
   source TEXT NOT NULL,
-  status TEXT NOT NULL REFERENCES item_status(type),
+  state_id int NOT NULL REFERENCES item_state(id),
   created_at timestamptz NOT NULL DEFAULT NOW(),
   modified_at timestamptz NOT NULL DEFAULT NOW()
 );
@@ -224,7 +226,7 @@ DROP FUNCTION trigger_set_timestamp;
 
 DROP TABLE "items";
 DROP TABLE "world_languages"
-DROP TABLE "item_status"
+DROP TABLE "item_state"
 
 -- Write your migrate down statements here. If this migration is irreversible
 -- Then delete the separator line above.

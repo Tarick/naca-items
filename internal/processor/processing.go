@@ -1,4 +1,4 @@
-package processing
+package processor
 
 import (
 	"encoding/json"
@@ -7,15 +7,6 @@ import (
 	"github.com/Tarick/naca-items/internal/entity"
 	"github.com/Tarick/naca-items/internal/messaging"
 )
-
-// Logger interface
-type Logger interface {
-	Debug(args ...interface{})
-	Info(args ...interface{})
-	Warn(args ...interface{})
-	Error(args ...interface{})
-	Fatal(args ...interface{})
-}
 
 // ItemsRepository defines repository methods
 type ItemsRepository interface {
@@ -38,7 +29,7 @@ func New(repository ItemsRepository, logger Logger) *processor {
 }
 
 // Process is a gateway for message consumption - handles incoming data and calls related handlers
-// It uses json.RawMessage to delay the unmarshalling of message content - Type is unmarshalled first.
+// It uses json.RawMessage to delay the unmarshalling of message content - Type is unmarshalled first to figure out what type of message it is.
 func (p *processor) Process(data []byte) error {
 	var msg json.RawMessage
 	message := messaging.MessageEnvelope{Msg: &msg}
@@ -46,22 +37,13 @@ func (p *processor) Process(data []byte) error {
 		return err
 	}
 	switch message.Type {
-	case messaging.NewItem:
+	case messaging.NewItemType:
 		var msgBody messaging.NewItemBody
 		if err := json.Unmarshal(msg, &msgBody); err != nil {
-			p.logger.Error("Failure unmarshalling NewItem body content: ", err)
+			p.logger.Error("Failure unmarshalling body content: ", err)
 			return err
 		}
-		item := entity.Item{
-			UUID:            msgBody.UUID,
-			PublicationUUID: msgBody.PublicationUUID,
-			Description:     msgBody.Description,
-			Content:         msgBody.Content,
-			Source:          msgBody.Source,
-			Author:          msgBody.Author,
-			LanguageCode:    msgBody.LanguageCode,
-		}
-		return p.CreateItem(item)
+		return p.ProcessNewItem(msgBody.ItemCore)
 	default:
 		p.logger.Error("Undefined message type: ", message.Type)
 		// TODO: implement common errors
@@ -69,9 +51,19 @@ func (p *processor) Process(data []byte) error {
 	}
 }
 
+func (p *processor) ProcessNewItem(itemCore *entity.ItemCore) error {
+	if err := itemCore.Validate(); err != nil {
+		return err
+	}
+	item := entity.NewItem()
+	item.ItemCore = itemCore
+	return p.CreateItem(item)
+
+}
+
 // CreateItem adds it to the system
-func (p *processor) CreateItem(item entity.Item) error {
-	itemExist, err := p.repository.ItemExists(&item)
+func (p *processor) CreateItem(item *entity.Item) error {
+	itemExist, err := p.repository.ItemExists(item)
 	if err != nil {
 		return fmt.Errorf("couldn't get item from repository, %w", err)
 	}
@@ -80,7 +72,7 @@ func (p *processor) CreateItem(item entity.Item) error {
 		p.logger.Error(errorMsg)
 		return errorMsg
 	}
-	if err := p.repository.Create(&item); err != nil {
+	if err := p.repository.Create(item); err != nil {
 		return err
 	}
 	p.logger.Info("Processed new item ", item.UUID, ", publication ", item.PublicationUUID)

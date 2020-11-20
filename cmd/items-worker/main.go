@@ -9,9 +9,6 @@ import (
 	"github.com/Tarick/naca-items/internal/messaging/nsqclient/consumer"
 	"github.com/Tarick/naca-items/internal/processing"
 
-	// "github.com/Tarick/naca-items/internal/messaging"
-	// "github.com/Tarick/naca-items/internal/messaging/nsqclient/consumer"
-	// "github.com/Tarick/naca-items/internal/messaging/nsqclient/producer"
 	"github.com/Tarick/naca-items/internal/repository/postgresql"
 	"github.com/Tarick/naca-items/internal/version"
 
