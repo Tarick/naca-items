@@ -49,6 +49,7 @@ func NewItemMessageEnvelope(
 	itemCore.Content = content
 	itemCore.Source = source
 	itemCore.Author = author
+	itemCore.LanguageCode = "en"
 	if err := itemCore.Validate(); err != nil {
 		return &MessageEnvelope{}, err
 	}
