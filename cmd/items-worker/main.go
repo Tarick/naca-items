@@ -7,7 +7,7 @@ import (
 	"github.com/Tarick/naca-items/internal/application/worker"
 	"github.com/Tarick/naca-items/internal/logger/zaplogger"
 	"github.com/Tarick/naca-items/internal/messaging/nsqclient/consumer"
-	"github.com/Tarick/naca-items/internal/processing"
+	"github.com/Tarick/naca-items/internal/processor"
 
 	"github.com/Tarick/naca-items/internal/repository/postgresql"
 	"github.com/Tarick/naca-items/internal/version"
@@ -69,7 +69,7 @@ func main() {
 				os.Exit(1)
 			}
 			// Construct consumer with message handler
-			processor := processing.New(repository, logger)
+			processor := processor.New(repository, logger)
 			consumer, err := consumer.New(consumeCfg, processor, logger)
 			if err != nil {
 				fmt.Printf("FATAL: consumer creation failed, %v", err)

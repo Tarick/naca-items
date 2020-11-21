@@ -41,10 +41,11 @@ func NewItemCore() *ItemCore {
 	return &ItemCore{}
 }
 
-// NewItem creates new item with set UUID
-func NewItem() *Item {
+// NewItem creates new item with set UUID v5, using PublicationUUID as a namespace and Title and PublishedDate as a key
+// This ensures uniquness of published item
+func NewItem(core *ItemCore) *Item {
 	item := &Item{}
-	item.UUID, _ = uuid.NewV4()
-	item.ItemCore = NewItemCore()
+	item.ItemCore = core
+	item.UUID = uuid.NewV5(item.PublicationUUID, fmt.Sprint(item.Title, "_", item.PublishedDate))
 	return item
 }

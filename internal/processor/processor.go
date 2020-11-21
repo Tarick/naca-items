@@ -43,6 +43,9 @@ func (p *processor) Process(data []byte) error {
 			p.logger.Error("Failure unmarshalling body content: ", err)
 			return err
 		}
+		if err := msgBody.ItemCore.Validate(); err != nil {
+			return err
+		}
 		return p.ProcessNewItem(msgBody.ItemCore)
 	default:
 		p.logger.Error("Undefined message type: ", message.Type)
@@ -52,13 +55,9 @@ func (p *processor) Process(data []byte) error {
 }
 
 func (p *processor) ProcessNewItem(itemCore *entity.ItemCore) error {
-	if err := itemCore.Validate(); err != nil {
-		return err
-	}
-	item := entity.NewItem()
-	item.ItemCore = itemCore
+	item := entity.NewItem(itemCore)
+	//TODO: next process steps are here
 	return p.CreateItem(item)
-
 }
 
 // CreateItem adds it to the system

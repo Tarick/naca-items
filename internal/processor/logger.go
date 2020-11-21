@@ -1,4 +1,4 @@
-package processing
+package processor
 
 // Logger interface
 type Logger interface {
