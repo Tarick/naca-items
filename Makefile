@@ -14,7 +14,7 @@ LDFLAGS=-extldflags=-static -w -s -X ${PACKAGE}/internal/version.Version=${BUILD
 CONTAINER_IMAGE_REGISTRY=local/items
 
 help:
-	@echo "build, build-images, deps, build-api, build-worker, build-api-image, build-worker-image, generate-api, build-sql-migrations-image, deploy-to-local-k8s"
+	@echo "build, build-images, deps, build-api, build-worker, build-api-image, build-worker-image, generate-api, build-sql-migrations-image, build-and-deplo, deploy-to-local-k8s"
 
 version:
 	@echo "${BUILD_VERSION}"
@@ -64,7 +64,9 @@ build-sql-migrations-image:
 	-t ${CONTAINER_IMAGE_REGISTRY}/items-sql-migrations:${BUILD_VERSION} \
 	-f migrations/Dockerfile .
 
-deploy-to-local-k8s: build-images
+build-and-deploy: build-images deploy-to-local-k8s
+
+deploy-to-local-k8s:
 	@echo "[INFO] Deploying current Items to local k8s service"
 	@echo "[INFO] Deleting old SQL migrations"
 	helmfile --environment local --selector app_name=items-sql-migrations -f ../naca-ops-config/helm/helmfile.yaml destroy

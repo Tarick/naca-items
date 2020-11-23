@@ -1,4 +1,4 @@
-FROM golang:1.15.0-alpine as build
+FROM golang:1.15.5-alpine3.15 as build
 RUN apk --no-cache add curl && \
     curl --silent -o /tmp/swaggerui.tgz https://codeload.github.com/swagger-api/swagger-ui/tar.gz/v3.26.1 && \
     tar -C /tmp  -xvzf /tmp/swaggerui.tgz swagger-ui-3.26.1/dist --strip-components=1 && mv /tmp/dist /tmp/swaggerui &&\

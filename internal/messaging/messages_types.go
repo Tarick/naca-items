@@ -39,6 +39,7 @@ func NewItemMessageEnvelope(
 	content string,
 	source string,
 	author string,
+	languageCode string,
 	publishedDate time.Time) (*MessageEnvelope, error) {
 
 	itemCore := entity.NewItemCore()
@@ -49,7 +50,7 @@ func NewItemMessageEnvelope(
 	itemCore.Content = content
 	itemCore.Source = source
 	itemCore.Author = author
-	itemCore.LanguageCode = "en"
+	itemCore.LanguageCode = languageCode
 	if err := itemCore.Validate(); err != nil {
 		return &MessageEnvelope{}, err
 	}
