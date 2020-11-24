@@ -19,8 +19,8 @@ type Item struct {
 
 // Validate checks validity of item fields
 func (item *Item) Validate() error {
-	return validation.ValidateStruct(&item,
-		validation.Field(&item.UUID, validation.Required, is.UUID, validation.By(checkUUIDNotNil)),
+	return validation.ValidateStruct(item,
+		validation.Field(item.UUID, validation.Required, is.UUID, validation.By(checkUUIDNotNil)),
 	)
 }
 
@@ -43,15 +43,15 @@ type ItemCore struct {
 
 // Validate checks core item fields
 func (core *ItemCore) Validate() error {
-	return validation.ValidateStruct(&core,
-		validation.Field(&core.PublicationUUID, validation.Required, is.UUID, validation.By(checkUUIDNotNil)),
-		validation.Field(&core.PublishedDate, validation.Required),
-		validation.Field(&core.Title, validation.Required, validation.Length(5, 400)),
-		validation.Field(&core.Description, validation.Required, validation.Length(5, 0)),
-		validation.Field(&core.Content, validation.Required, validation.Length(5, 0)),
-		validation.Field(&core.Source, validation.Required, validation.Length(5, 100), is.URL),
-		validation.Field(&core.Author, validation.Required, validation.Length(3, 100)),
-		validation.Field(&core.LanguageCode, validation.Required, validation.Length(2, 2), isLanguageCode),
+	return validation.ValidateStruct(core,
+		validation.Field(core.PublicationUUID, validation.Required, is.UUID, validation.By(checkUUIDNotNil)),
+		validation.Field(core.PublishedDate, validation.Required),
+		validation.Field(core.Title, validation.Required, validation.Length(5, 400)),
+		validation.Field(core.Description, validation.Required, validation.Length(5, 0)),
+		validation.Field(core.Content, validation.Required, validation.Length(5, 0)),
+		validation.Field(core.Source, validation.Required, validation.Length(5, 100), is.URL),
+		validation.Field(core.Author, validation.Required, validation.Length(3, 100)),
+		validation.Field(core.LanguageCode, validation.Required, validation.Length(2, 2), isLanguageCode),
 	)
 }
 
