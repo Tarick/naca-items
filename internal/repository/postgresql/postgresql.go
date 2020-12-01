@@ -75,11 +75,10 @@ func (repository *ItemsRepository) Create(item *entity.Item) error {
 		title,
 		description,
 		content,
-		source,
-		author,
+		url,
 		language_code,
-		state_id) select $1, $2, $3, $4, $5, $6, $7, $8, $9, id from item_state where type='valid'`,
-		item.UUID, item.PublicationUUID, item.PublishedDate, item.Title, item.Description, item.Content, item.Source, item.Author, item.LanguageCode)
+		state_id) select $1, $2, $3, $4, $5, $6, $7, $8, id from item_state where type='valid'`,
+		item.UUID, item.PublicationUUID, item.PublishedDate, item.Title, item.Description, item.Content, item.URL, item.LanguageCode)
 	return err
 }
 

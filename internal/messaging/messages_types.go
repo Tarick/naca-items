@@ -37,8 +37,7 @@ func NewItemMessageEnvelope(
 	title string,
 	description string,
 	content string,
-	source string,
-	author string,
+	url string,
 	languageCode string,
 	publishedDate time.Time) (*MessageEnvelope, error) {
 
@@ -48,8 +47,7 @@ func NewItemMessageEnvelope(
 	itemCore.Title = title
 	itemCore.Description = description
 	itemCore.Content = content
-	itemCore.Source = source
-	itemCore.Author = author
+	itemCore.URL = url
 	itemCore.LanguageCode = languageCode
 	if err := itemCore.Validate(); err != nil {
 		return &MessageEnvelope{}, err

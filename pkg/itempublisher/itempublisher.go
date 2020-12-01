@@ -24,12 +24,11 @@ func (p *messagePublisher) PublishNewItem(
 	title string,
 	description string,
 	content string,
-	source string,
-	author string,
+	url string,
 	languageCode string,
 	publishedDate time.Time) error {
 
-	message, err := messaging.NewItemMessageEnvelope(publicationUUID, title, description, content, source, author, languageCode, publishedDate)
+	message, err := messaging.NewItemMessageEnvelope(publicationUUID, title, description, content, url, languageCode, publishedDate)
 	if err != nil {
 		return err
 	}
