@@ -1,0 +1,17 @@
+type Item {
+    uuid: String!
+    publicationUUID: String!
+    publishedDate: Time!
+    title: String!
+    description: String
+    content: String
+    url: String
+    language_code: String
+}
+
+type Query {
+    items: [Item]!
+    item(uuid: ID!): Item
+}
+
+scalar Time

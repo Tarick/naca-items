@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -10,8 +11,8 @@ import (
 
 // ItemsRepository defines repository methods
 type ItemsRepository interface {
-	Create(*entity.Item) error
-	ItemExists(*entity.Item) (bool, error)
+	Create(context.Context, *entity.Item) error
+	ItemExists(context.Context, *entity.Item) (bool, error)
 }
 
 // processor is container for business logic
@@ -62,7 +63,7 @@ func (p *processor) ProcessNewItem(itemCore *entity.ItemCore) error {
 
 // CreateItem adds it to the system
 func (p *processor) CreateItem(item *entity.Item) error {
-	itemExist, err := p.repository.ItemExists(item)
+	itemExist, err := p.repository.ItemExists(context.Background(), item)
 	if err != nil {
 		return fmt.Errorf("couldn't get item from repository, %w", err)
 	}
@@ -71,7 +72,7 @@ func (p *processor) CreateItem(item *entity.Item) error {
 		p.logger.Error(errorMsg)
 		return errorMsg
 	}
-	if err := p.repository.Create(item); err != nil {
+	if err := p.repository.Create(context.Background(), item); err != nil {
 		return err
 	}
 	p.logger.Info("Processed new item ", item.UUID, ", publication ", item.PublicationUUID)

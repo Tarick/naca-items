@@ -67,8 +67,61 @@ func New(databaseConfig *Config, logger pgx.Logger) (*ItemsRepository, error) {
 	return &ItemsRepository{pool: pool}, nil
 }
 
-func (repository *ItemsRepository) Create(item *entity.Item) error {
-	_, err := repository.pool.Exec(context.Background(), `insert into items (
+// GetItemByUUID returns item found by UUID
+func (repository *ItemsRepository) GetItemByUUID(ctx context.Context, UUID uuid.UUID) (*entity.Item, error) {
+	item := entity.NewNullItem()
+	err := repository.pool.QueryRow(ctx,
+		"select uuid, publication_uuid, published_date, title, description, content, url, language_code from items where uuid=$1", UUID).Scan(
+		&item.UUID,
+		&item.PublicationUUID,
+		&item.PublishedDate,
+		&item.Title,
+		&item.Description,
+		&item.Content,
+		&item.URL,
+		&item.LanguageCode,
+	)
+	if err != nil && err == pgx.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return item, nil
+}
+
+// GetItems returns slice of items pointers
+func (repository *ItemsRepository) GetItems(ctx context.Context) ([]*entity.Item, error) {
+	rows, err := repository.pool.Query(ctx, "select uuid, publication_uuid, published_date, title, description, content, url, language_code from items")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	items := []*entity.Item{}
+	for rows.Next() {
+		item := entity.NewNullItem()
+		if err := rows.Scan(
+			&item.UUID,
+			&item.PublicationUUID,
+			&item.PublishedDate,
+			&item.Title,
+			&item.Description,
+			&item.Content,
+			&item.URL,
+			&item.LanguageCode); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if rows.Err() != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (repository *ItemsRepository) Create(ctx context.Context, item *entity.Item) error {
+	_, err := repository.pool.Exec(ctx, `insert into items (
 		uuid,
 		publication_uuid,
 		published_date,
@@ -82,8 +135,8 @@ func (repository *ItemsRepository) Create(item *entity.Item) error {
 	return err
 }
 
-func (repository *ItemsRepository) Delete(UUID uuid.UUID) error {
-	result, err := repository.pool.Exec(context.Background(), "delete from items where uuid=$1", UUID)
+func (repository *ItemsRepository) Delete(ctx context.Context, UUID uuid.UUID) error {
+	result, err := repository.pool.Exec(ctx, "delete from items where uuid=$1", UUID)
 	if err != nil {
 		return err
 	}
@@ -93,9 +146,9 @@ func (repository *ItemsRepository) Delete(UUID uuid.UUID) error {
 	return err
 }
 
-func (repository *ItemsRepository) ItemExists(item *entity.Item) (bool, error) {
+func (repository *ItemsRepository) ItemExists(ctx context.Context, item *entity.Item) (bool, error) {
 	var exists bool
-	row := repository.pool.QueryRow(context.Background(), "select exists (select 1 from items where uuid=$1)", item.UUID)
+	row := repository.pool.QueryRow(ctx, "select exists (select 1 from items where uuid=$1)", item.UUID)
 	if err := row.Scan(&exists); err != nil {
 		return false, err
 	}

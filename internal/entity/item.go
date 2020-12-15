@@ -79,3 +79,10 @@ func NewItem(core *ItemCore) *Item {
 	item.UUID = uuid.NewV5(item.PublicationUUID, fmt.Sprint(item.Title, "_", item.PublishedDate))
 	return item
 }
+
+// NewNullItem creates empty Item for unmarshalling
+func NewNullItem() *Item {
+	item := &Item{}
+	item.ItemCore = NewItemCore()
+	return item
+}

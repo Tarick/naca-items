@@ -1,16 +1,12 @@
 package main
 
-//go:generate swagger generate spec --scan-models -o ../../docs/swagger.json
-
 import (
 	"fmt"
 	"os"
 
-	_ "github.com/Tarick/naca-items/docs"
 	"github.com/Tarick/naca-items/internal/logger/zaplogger"
 
 	"github.com/Tarick/naca-items/internal/application/server"
-	// "github.com/Tarick/naca-items/internal/messaging/nsqclient/producer"
 	"github.com/Tarick/naca-items/internal/repository/postgresql"
 	"github.com/Tarick/naca-items/internal/version"
 
@@ -58,24 +54,12 @@ func main() {
 				os.Exit(1)
 			}
 			// Open db
-			db, err := postgresql.New(dbCfg, postgresql.NewZapLogger(logger.Desugar()))
+			itemsRepository, err := postgresql.New(dbCfg, postgresql.NewZapLogger(logger.Desugar()))
 			if err != nil {
-				fmt.Println("FATAL: failure creating database connection, ", err)
+				fmt.Println("FATAL: failure creating database connection for Items, ", err)
 				os.Exit(1)
 			}
 
-			// Create NSQ producer
-			// publishViperConfig := viper.Sub("publish")
-			// publishCfg := &producer.MessageProducerConfig{}
-			// if err := publishViperConfig.UnmarshalExact(&publishCfg); err != nil {
-			// 	fmt.Println("FATAL: failure reading NSQ 'publish' configuration, ", err)
-			// 	os.Exit(1)
-			// }
-			// messageProducer, err := producer.New(publishCfg)
-			if err != nil {
-				fmt.Println("FATAL: failure initialising NSQ producer, ", err)
-				os.Exit(1)
-			}
 			// Create web server
 			serverCfg := server.Config{}
 			serverViperConfig := viper.Sub("server")
@@ -83,7 +67,7 @@ func main() {
 				fmt.Println("FATAL: failure reading 'server' configuration, ", err)
 				os.Exit(1)
 			}
-			httpServer := server.New(serverCfg, logger, db)
+			httpServer := server.New(serverCfg, logger, itemsRepository)
 			httpServer.StartAndServe()
 		},
 	}

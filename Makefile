@@ -13,18 +13,18 @@ PACKAGE=naca-items
 LDFLAGS=-extldflags=-static -w -s -X ${PACKAGE}/internal/version.Version=${BUILD_VERSION} -X ${PACKAGE}/internal/version.BuildTime=${BUILD_TIME}
 CONTAINER_IMAGE_REGISTRY=local/items
 
-help:
-	@echo "build, build-images, deps, build-api, build-worker, build-api-image, build-worker-image, generate-api, build-sql-migrations-image, build-and-deplo, deploy-to-local-k8s"
+# ONLY TABS IN THE START OF COMMAND, NO SPACES!
+help: ## Return all targets to run
+	@echo "build, build-images, deps, build-api, build-worker, build-api-image, build-worker-image, generate-api, build-sql-migrations-image, build-and-deploy, deploy-to-local-k8s"
 
-version:
+version: ## Return build version
 	@echo "${BUILD_VERSION}"
 
-# ONLY TABS IN THE START OF COMMAND, NO SPACES!
-build: deps build-api build-worker
+build: deps build-api build-worker ## Build all targets
 
-build-images: build-api-image build-worker-image build-sql-migrations-image
+build-images: build-api-image build-worker-image build-sql-migrations-image ## Build all docker images
 
-clean:
+clean: ## Remove build artifacts
 	@echo "[INFO] Cleaning build files"
 	rm -f build/*
 
@@ -32,20 +32,21 @@ deps:
 	@echo "[INFO] Downloading and installing dependencies"
 	go mod download
 
-build-api: deps generate-api
+build-api: deps generate
 	@echo "[INFO] Building API Server binary"
 	go build -ldflags "${LDFLAGS}" -o build/items-api ./cmd/items-api
 	@echo "[INFO] Build successful"
 
-generate-api:
-	@echo "[INFO] Running code generations for API"
-	go generate cmd/items-api/main.go
+generate:
+	@echo "[INFO] Running code generations for all packages"
+	@go generate ./...
+	@echo "[INFO] Finished code generation"
 
 build-api-image:
 	@echo "[INFO] Building API container image"
-	# docker build -t ${CONTAINER_IMAGE_REGISTRY}/items-api:${BUILD_BRANCH}-${BUILD_HASH} \
-	# -t ${CONTAINER_IMAGE_REGISTRY}/items-api:${BUILD_VERSION} \
-	# --build-arg BUILD_VERSION=${BUILD_VERSION} -f cmd/items-api/Dockerfile .
+	docker build -t ${CONTAINER_IMAGE_REGISTRY}/items-api:${BUILD_BRANCH}-${BUILD_HASH} \
+	-t ${CONTAINER_IMAGE_REGISTRY}/items-api:${BUILD_VERSION} \
+	--build-arg BUILD_VERSION=${BUILD_VERSION} -f cmd/items-api/Dockerfile .
 
 build-worker: deps
 	@echo "[INFO] Building Worker Server binary"
