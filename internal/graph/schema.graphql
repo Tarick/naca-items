@@ -12,6 +12,8 @@ type Item {
 type Query {
     items: [Item]!
     item(uuid: ID!): Item
+    itemsByPublicationUUID(publicationUUID: String!): [Item]!
+    itemsByPublicationUUIDSortedByPublishedUUID(publicationUUID: String!, orderAsc: Boolean): [Item]!
 }
 
 scalar Time

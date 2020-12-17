@@ -56,7 +56,7 @@ func (p *processor) Process(data []byte) error {
 }
 
 func (p *processor) ProcessNewItem(itemCore *entity.ItemCore) error {
-	item := entity.NewItem(itemCore)
+	item := entity.NewFilledItem(itemCore)
 	//TODO: next process steps are here
 	return p.CreateItem(item)
 }

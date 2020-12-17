@@ -56,8 +56,10 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Item  func(childComplexity int, uuid string) int
-		Items func(childComplexity int) int
+		Item                                        func(childComplexity int, uuid string) int
+		Items                                       func(childComplexity int) int
+		ItemsByPublicationUUID                      func(childComplexity int, publicationUUID string) int
+		ItemsByPublicationUUIDSortedByPublishedUUID func(childComplexity int, publicationUUID string, orderAsc *bool) int
 	}
 }
 
@@ -68,6 +70,8 @@ type ItemResolver interface {
 type QueryResolver interface {
 	Items(ctx context.Context) ([]*entity.Item, error)
 	Item(ctx context.Context, uuid string) (*entity.Item, error)
+	ItemsByPublicationUUID(ctx context.Context, publicationUUID string) ([]*entity.Item, error)
+	ItemsByPublicationUUIDSortedByPublishedUUID(ctx context.Context, publicationUUID string, orderAsc *bool) ([]*entity.Item, error)
 }
 
 type executableSchema struct {
@@ -160,6 +164,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Items(childComplexity), true
 
+	case "Query.itemsByPublicationUUID":
+		if e.complexity.Query.ItemsByPublicationUUID == nil {
+			break
+		}
+
+		args, err := ec.field_Query_itemsByPublicationUUID_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ItemsByPublicationUUID(childComplexity, args["publicationUUID"].(string)), true
+
+	case "Query.itemsByPublicationUUIDSortedByPublishedUUID":
+		if e.complexity.Query.ItemsByPublicationUUIDSortedByPublishedUUID == nil {
+			break
+		}
+
+		args, err := ec.field_Query_itemsByPublicationUUIDSortedByPublishedUUID_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ItemsByPublicationUUIDSortedByPublishedUUID(childComplexity, args["publicationUUID"].(string), args["orderAsc"].(*bool)), true
+
 	}
 	return 0, false
 }
@@ -224,6 +252,8 @@ var sources = []*ast.Source{
 type Query {
     items: [Item]!
     item(uuid: ID!): Item
+    itemsByPublicationUUID(publicationUUID: String!): [Item]!
+    itemsByPublicationUUIDSortedByPublishedUUID(publicationUUID: String!, orderAsc: Boolean): [Item]!
 }
 
 scalar Time`, BuiltIn: false},
@@ -261,6 +291,45 @@ func (ec *executionContext) field_Query_item_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["uuid"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_itemsByPublicationUUIDSortedByPublishedUUID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["publicationUUID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publicationUUID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["publicationUUID"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["orderAsc"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderAsc"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["orderAsc"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_itemsByPublicationUUID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["publicationUUID"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publicationUUID"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["publicationUUID"] = arg0
 	return args, nil
 }
 
@@ -642,6 +711,90 @@ func (ec *executionContext) _Query_item(ctx context.Context, field graphql.Colle
 	res := resTmp.(*entity.Item)
 	fc.Result = res
 	return ec.marshalOItem2ᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_itemsByPublicationUUID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_itemsByPublicationUUID_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ItemsByPublicationUUID(rctx, args["publicationUUID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*entity.Item)
+	fc.Result = res
+	return ec.marshalNItem2ᚕᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_itemsByPublicationUUIDSortedByPublishedUUID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_itemsByPublicationUUIDSortedByPublishedUUID_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ItemsByPublicationUUIDSortedByPublishedUUID(rctx, args["publicationUUID"].(string), args["orderAsc"].(*bool))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*entity.Item)
+	fc.Result = res
+	return ec.marshalNItem2ᚕᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1916,6 +2069,34 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_item(ctx, field)
+				return res
+			})
+		case "itemsByPublicationUUID":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_itemsByPublicationUUID(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
+		case "itemsByPublicationUUIDSortedByPublishedUUID":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_itemsByPublicationUUIDSortedByPublishedUUID(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "__type":

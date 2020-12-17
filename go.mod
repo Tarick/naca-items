@@ -5,12 +5,12 @@ go 1.15
 replace github.com/Tarick/naca-items => ./
 
 require (
-	github.com/99designs/gqlgen v0.13.0
+	github.com/99designs/gqlgen v0.13.1-0.20201207060723-862762c77bae
 	github.com/agnivade/levenshtein v1.1.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef
 	github.com/dgryski/trifles v0.0.0-20200830180326-aaf60a07f6a3 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/go-chi/chi v4.1.2+incompatible
+	github.com/go-chi/chi v1.5.1
 	github.com/go-chi/cors v1.1.1
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gofrs/uuid v3.3.0+incompatible
@@ -37,12 +37,11 @@ require (
 	github.com/vektah/gqlparser/v2 v2.1.0
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.16.0
-	golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9 // indirect
+	golang.org/x/crypto v0.0.0-20201217014255-9d1352758620 // indirect
 	golang.org/x/lint v0.0.0-20201208152925-83fdc39ff7b5 // indirect
 	golang.org/x/mod v0.4.0 // indirect
-	golang.org/x/net v0.0.0-20201209123823-ac852fbbde11 // indirect
 	golang.org/x/sys v0.0.0-20201214210602-f9fddec55a1e // indirect
-	golang.org/x/tools v0.0.0-20201211185031-d93e913c1a58 // indirect
+	golang.org/x/tools v0.0.0-20201215192005-fa10ef0b8743 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

@@ -15,6 +15,10 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
+const (
+	sqlQueryItem string = "select uuid, publication_uuid, published_date, title, description, content, url, language_code from items"
+)
+
 // Config defines database configuration, usable for Viper
 type Config struct {
 	Name           string `mapstructure:"name"`
@@ -28,10 +32,13 @@ type Config struct {
 	MaxConnections int32  `mapstructure:"max_connections"`
 }
 
+// ItemsRepository is the main repository struct
+// Use ItemsRepository.pool to make queries
 type ItemsRepository struct {
 	pool *pgxpool.Pool
 }
 
+// NewZapLogger returns logger for repository based on uber zap
 func NewZapLogger(logger *zap.Logger) *zapadapter.Logger {
 	return zapadapter.NewLogger(logger)
 }
@@ -59,7 +66,6 @@ func New(databaseConfig *Config, logger pgx.Logger) (*ItemsRepository, error) {
 	poolConfig.ConnConfig.LogLevel = logLevelMapping[databaseConfig.LogLevel]
 	poolConfig.MaxConns = databaseConfig.MaxConnections
 	poolConfig.MinConns = databaseConfig.MinConnections
-
 	pool, err := pgxpool.ConnectConfig(context.Background(), poolConfig)
 	if err != nil {
 		return nil, err
@@ -69,7 +75,7 @@ func New(databaseConfig *Config, logger pgx.Logger) (*ItemsRepository, error) {
 
 // GetItemByUUID returns item found by UUID
 func (repository *ItemsRepository) GetItemByUUID(ctx context.Context, UUID uuid.UUID) (*entity.Item, error) {
-	item := entity.NewNullItem()
+	item := entity.NewItem()
 	err := repository.pool.QueryRow(ctx,
 		"select uuid, publication_uuid, published_date, title, description, content, url, language_code from items where uuid=$1", UUID).Scan(
 		&item.UUID,
@@ -92,7 +98,28 @@ func (repository *ItemsRepository) GetItemByUUID(ctx context.Context, UUID uuid.
 
 // GetItems returns slice of items pointers
 func (repository *ItemsRepository) GetItems(ctx context.Context) ([]*entity.Item, error) {
-	rows, err := repository.pool.Query(ctx, "select uuid, publication_uuid, published_date, title, description, content, url, language_code from items")
+	return repository.getItems(ctx, sqlQueryItem)
+}
+
+// GetItemsByPublicationUUID returns slice of items pointers filtered by PublicationUUID
+func (repository *ItemsRepository) GetItemsByPublicationUUID(ctx context.Context, publicationUUID uuid.UUID) ([]*entity.Item, error) {
+	queryString := sqlQueryItem + " where publication_uuid=$1"
+	return repository.getItems(ctx, queryString, publicationUUID)
+}
+
+// GetItemsByPublicationUUIDSortByPublishedDate returns slice of items pointers filtered by PublicationUUID and sorted by publishedDate
+func (repository *ItemsRepository) GetItemsByPublicationUUIDSortByPublishedDate(ctx context.Context, publicationUUID uuid.UUID, sortAsc bool) ([]*entity.Item, error) {
+	var sortOrder string = "desc"
+	if sortAsc {
+		sortOrder = "asc"
+	}
+	queryString := fmt.Sprint(sqlQueryItem, " where publication_uuid=$1 order by published_date ", sortOrder)
+	return repository.getItems(ctx, queryString, publicationUUID)
+}
+
+// getItems returns slice of items pointers, retrieved using queryString with any parameters
+func (repository *ItemsRepository) getItems(ctx context.Context, queryString string, args ...interface{}) ([]*entity.Item, error) {
+	rows, err := repository.pool.Query(ctx, queryString, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +127,7 @@ func (repository *ItemsRepository) GetItems(ctx context.Context) ([]*entity.Item
 
 	items := []*entity.Item{}
 	for rows.Next() {
-		item := entity.NewNullItem()
+		item := entity.NewItem()
 		if err := rows.Scan(
 			&item.UUID,
 			&item.PublicationUUID,
@@ -118,6 +145,7 @@ func (repository *ItemsRepository) GetItems(ctx context.Context) ([]*entity.Item
 		return nil, err
 	}
 	return items, nil
+
 }
 
 func (repository *ItemsRepository) Create(ctx context.Context, item *entity.Item) error {

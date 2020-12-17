@@ -71,17 +71,17 @@ var isLanguageCode = validation.NewStringRuleWithError(
 	govalidator.IsISO693Alpha2,
 	validation.NewError("validation_is_language_code_2_letter", "must be a valid two-letter ISO693Alpha2 language code"))
 
-// NewItem creates new item with set UUID v5, using PublicationUUID as a namespace and Title and PublishedDate as a key
+// NewFilledItem creates new item with set UUID v5, using PublicationUUID as a namespace and Title and PublishedDate as a key
 // This ensures uniquness of published item
-func NewItem(core *ItemCore) *Item {
+func NewFilledItem(core *ItemCore) *Item {
 	item := &Item{}
 	item.ItemCore = core
 	item.UUID = uuid.NewV5(item.PublicationUUID, fmt.Sprint(item.Title, "_", item.PublishedDate))
 	return item
 }
 
-// NewNullItem creates empty Item for unmarshalling
-func NewNullItem() *Item {
+// NewItem creates empty Item for unmarshalling
+func NewItem() *Item {
 	item := &Item{}
 	item.ItemCore = NewItemCore()
 	return item

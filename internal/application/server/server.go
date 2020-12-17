@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
+	// "github.com/99designs/gqlgen/graphql/playground"
 	"github.com/Tarick/naca-items/internal/graph/generated"
 	"github.com/Tarick/naca-items/internal/graph/resolver"
 	"github.com/go-chi/chi"
@@ -57,7 +57,7 @@ func New(serverConfig Config, logger Logger, itemsRepository resolver.ItemsRepos
 		w.Write([]byte("."))
 	},
 	)
-	r.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	// r.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	r.Route("/query", func(r chi.Router) {
 		graphqlSchema := generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{ItemsRepository: itemsRepository}})
 		graphqlSrv := handler.NewDefaultServer(graphqlSchema)
