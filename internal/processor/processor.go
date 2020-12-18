@@ -47,7 +47,7 @@ func (p *processor) Process(data []byte) error {
 		if err := msgBody.ItemCore.Validate(); err != nil {
 			return err
 		}
-		return p.ProcessNewItem(msgBody.ItemCore)
+		return p.ProcessNewItem(context.Background(), msgBody.ItemCore)
 	default:
 		p.logger.Error("Undefined message type: ", message.Type)
 		// TODO: implement common errors
@@ -55,15 +55,15 @@ func (p *processor) Process(data []byte) error {
 	}
 }
 
-func (p *processor) ProcessNewItem(itemCore *entity.ItemCore) error {
+func (p *processor) ProcessNewItem(ctx context.Context, itemCore *entity.ItemCore) error {
 	item := entity.NewFilledItem(itemCore)
 	//TODO: next process steps are here
-	return p.CreateItem(item)
+	return p.CreateItem(ctx, item)
 }
 
 // CreateItem adds it to the system
-func (p *processor) CreateItem(item *entity.Item) error {
-	itemExist, err := p.repository.ItemExists(context.Background(), item)
+func (p *processor) CreateItem(ctx context.Context, item *entity.Item) error {
+	itemExist, err := p.repository.ItemExists(ctx, item)
 	if err != nil {
 		return fmt.Errorf("couldn't get item from repository, %w", err)
 	}
