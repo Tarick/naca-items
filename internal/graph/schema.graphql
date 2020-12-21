@@ -1,5 +1,5 @@
 type Item {
-    uuid: String!
+    uuid: ID!
     publicationUUID: String!
     publishedDate: Time!
     title: String!
@@ -8,12 +8,27 @@ type Item {
     url: String
     language_code: String
 }
-
 type Query {
-    items: [Item]!
+    items(publicationUUID: String, orderAsc: Boolean = false): [Item]!
+    itemsConnection(publicationUUID: String, orderAsc: Boolean = false, first: Int, after: ID, last: Int, before: ID): ItemsConnection!
     item(uuid: ID!): Item
-    itemsByPublicationUUID(publicationUUID: String!): [Item]!
-    itemsByPublicationUUIDSortedByPublishedUUID(publicationUUID: String!, orderAsc: Boolean): [Item]!
 }
 
 scalar Time
+
+type ItemsEdge {
+    node: Item
+    cursor: String!
+}
+type PageInfo {
+      hasNextPage: Boolean!
+      endCursor: String
+      hasPreviousPage: Boolean!
+      startCursor: String
+}
+
+type ItemsConnection {
+    totalCount: Int
+    pageInfo: PageInfo!
+    edges: [ItemsEdge]
+}

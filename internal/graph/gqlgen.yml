@@ -13,7 +13,8 @@ exec:
 # Where should any generated models go?
 model:
   # Workaround to skip error "no matching versions for query latest"
-  filename: ""
+  # filename: ""
+  filename: model/model_gen.go
   package: model
 
 # Where should the resolver implementations go?
@@ -33,8 +34,9 @@ resolver:
 
 # gqlgen will search for any type names in the schema in these go packages
 # if they match it will use them, otherwise it will generate them.
-# autobind:
-#   - "github.com/vektah/gqlgen-todos/graph/model"
+autobind:
+  - "github.com/Tarick/naca-items/internal/entity"
+  - "github.com/Tarick/naca-items/internal/graph/model"
 
 # This section declares type mapping between the GraphQL and go type systems
 #
@@ -48,7 +50,13 @@ resolver:
 #       - github.com/99designs/gqlgen/graphql.Int64
 #       - github.com/99designs/gqlgen/graphql.IntID
 
-models:
-  Item:
-    model: 
-      - github.com/Tarick/naca-items/internal/entity.Item
+# models:
+#   ItemsConnection:
+#     model: 
+#       - github.com/Tarick/naca-items/internal/graph/model.ItemsConnection
+#   ItemsEdge:
+#     model: 
+#       - github.com/Tarick/naca-items/internal/graph/model.ItemsEdge
+#   PageInfo:
+#     model: 
+#       - github.com/Tarick/naca-items/internal/graph/model.PageInfo

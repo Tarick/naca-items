@@ -14,6 +14,7 @@ import (
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
 	"github.com/Tarick/naca-items/internal/entity"
+	"github.com/Tarick/naca-items/internal/graph/model"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -37,6 +38,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Item() ItemResolver
+	ItemsConnection() ItemsConnectionResolver
 	Query() QueryResolver
 }
 
@@ -55,11 +57,28 @@ type ComplexityRoot struct {
 		UUID            func(childComplexity int) int
 	}
 
+	ItemsConnection struct {
+		Edges      func(childComplexity int) int
+		PageInfo   func(childComplexity int) int
+		TotalCount func(childComplexity int) int
+	}
+
+	ItemsEdge struct {
+		Cursor func(childComplexity int) int
+		Node   func(childComplexity int) int
+	}
+
+	PageInfo struct {
+		EndCursor       func(childComplexity int) int
+		HasNextPage     func(childComplexity int) int
+		HasPreviousPage func(childComplexity int) int
+		StartCursor     func(childComplexity int) int
+	}
+
 	Query struct {
-		Item                                        func(childComplexity int, uuid string) int
-		Items                                       func(childComplexity int) int
-		ItemsByPublicationUUID                      func(childComplexity int, publicationUUID string) int
-		ItemsByPublicationUUIDSortedByPublishedUUID func(childComplexity int, publicationUUID string, orderAsc *bool) int
+		Item            func(childComplexity int, uuid string) int
+		Items           func(childComplexity int, publicationUUID *string, orderAsc *bool) int
+		ItemsConnection func(childComplexity int, publicationUUID *string, orderAsc *bool, first *int, after *string, last *int, before *string) int
 	}
 }
 
@@ -67,11 +86,13 @@ type ItemResolver interface {
 	UUID(ctx context.Context, obj *entity.Item) (string, error)
 	PublicationUUID(ctx context.Context, obj *entity.Item) (string, error)
 }
+type ItemsConnectionResolver interface {
+	Edges(ctx context.Context, obj *model.ItemsConnection) ([]*model.ItemsEdge, error)
+}
 type QueryResolver interface {
-	Items(ctx context.Context) ([]*entity.Item, error)
+	Items(ctx context.Context, publicationUUID *string, orderAsc *bool) ([]*entity.Item, error)
+	ItemsConnection(ctx context.Context, publicationUUID *string, orderAsc *bool, first *int, after *string, last *int, before *string) (*model.ItemsConnection, error)
 	Item(ctx context.Context, uuid string) (*entity.Item, error)
-	ItemsByPublicationUUID(ctx context.Context, publicationUUID string) ([]*entity.Item, error)
-	ItemsByPublicationUUIDSortedByPublishedUUID(ctx context.Context, publicationUUID string, orderAsc *bool) ([]*entity.Item, error)
 }
 
 type executableSchema struct {
@@ -145,6 +166,69 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Item.UUID(childComplexity), true
 
+	case "ItemsConnection.edges":
+		if e.complexity.ItemsConnection.Edges == nil {
+			break
+		}
+
+		return e.complexity.ItemsConnection.Edges(childComplexity), true
+
+	case "ItemsConnection.pageInfo":
+		if e.complexity.ItemsConnection.PageInfo == nil {
+			break
+		}
+
+		return e.complexity.ItemsConnection.PageInfo(childComplexity), true
+
+	case "ItemsConnection.totalCount":
+		if e.complexity.ItemsConnection.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.ItemsConnection.TotalCount(childComplexity), true
+
+	case "ItemsEdge.cursor":
+		if e.complexity.ItemsEdge.Cursor == nil {
+			break
+		}
+
+		return e.complexity.ItemsEdge.Cursor(childComplexity), true
+
+	case "ItemsEdge.node":
+		if e.complexity.ItemsEdge.Node == nil {
+			break
+		}
+
+		return e.complexity.ItemsEdge.Node(childComplexity), true
+
+	case "PageInfo.endCursor":
+		if e.complexity.PageInfo.EndCursor == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.EndCursor(childComplexity), true
+
+	case "PageInfo.hasNextPage":
+		if e.complexity.PageInfo.HasNextPage == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.HasNextPage(childComplexity), true
+
+	case "PageInfo.hasPreviousPage":
+		if e.complexity.PageInfo.HasPreviousPage == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.HasPreviousPage(childComplexity), true
+
+	case "PageInfo.startCursor":
+		if e.complexity.PageInfo.StartCursor == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.StartCursor(childComplexity), true
+
 	case "Query.item":
 		if e.complexity.Query.Item == nil {
 			break
@@ -162,31 +246,24 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.Items(childComplexity), true
-
-	case "Query.itemsByPublicationUUID":
-		if e.complexity.Query.ItemsByPublicationUUID == nil {
-			break
-		}
-
-		args, err := ec.field_Query_itemsByPublicationUUID_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_items_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.ItemsByPublicationUUID(childComplexity, args["publicationUUID"].(string)), true
+		return e.complexity.Query.Items(childComplexity, args["publicationUUID"].(*string), args["orderAsc"].(*bool)), true
 
-	case "Query.itemsByPublicationUUIDSortedByPublishedUUID":
-		if e.complexity.Query.ItemsByPublicationUUIDSortedByPublishedUUID == nil {
+	case "Query.itemsConnection":
+		if e.complexity.Query.ItemsConnection == nil {
 			break
 		}
 
-		args, err := ec.field_Query_itemsByPublicationUUIDSortedByPublishedUUID_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_itemsConnection_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.ItemsByPublicationUUIDSortedByPublishedUUID(childComplexity, args["publicationUUID"].(string), args["orderAsc"].(*bool)), true
+		return e.complexity.Query.ItemsConnection(childComplexity, args["publicationUUID"].(*string), args["orderAsc"].(*bool), args["first"].(*int), args["after"].(*string), args["last"].(*int), args["before"].(*string)), true
 
 	}
 	return 0, false
@@ -239,7 +316,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 
 var sources = []*ast.Source{
 	{Name: "schema.graphql", Input: `type Item {
-    uuid: String!
+    uuid: ID!
     publicationUUID: String!
     publishedDate: Time!
     title: String!
@@ -248,15 +325,30 @@ var sources = []*ast.Source{
     url: String
     language_code: String
 }
-
 type Query {
-    items: [Item]!
+    items(publicationUUID: String, orderAsc: Boolean = false): [Item]!
+    itemsConnection(publicationUUID: String, orderAsc: Boolean = false, first: Int, after: ID, last: Int, before: ID): ItemsConnection!
     item(uuid: ID!): Item
-    itemsByPublicationUUID(publicationUUID: String!): [Item]!
-    itemsByPublicationUUIDSortedByPublishedUUID(publicationUUID: String!, orderAsc: Boolean): [Item]!
 }
 
-scalar Time`, BuiltIn: false},
+scalar Time
+
+type ItemsEdge {
+    node: Item
+    cursor: String!
+}
+type PageInfo {
+      hasNextPage: Boolean!
+      endCursor: String
+      hasPreviousPage: Boolean!
+      startCursor: String
+}
+
+type ItemsConnection {
+    totalCount: Int
+    pageInfo: PageInfo!
+    edges: [ItemsEdge]
+}`, BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -294,13 +386,13 @@ func (ec *executionContext) field_Query_item_args(ctx context.Context, rawArgs m
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_itemsByPublicationUUIDSortedByPublishedUUID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_itemsConnection_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["publicationUUID"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publicationUUID"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -315,21 +407,66 @@ func (ec *executionContext) field_Query_itemsByPublicationUUIDSortedByPublishedU
 		}
 	}
 	args["orderAsc"] = arg1
+	var arg2 *int
+	if tmp, ok := rawArgs["first"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
+		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["first"] = arg2
+	var arg3 *string
+	if tmp, ok := rawArgs["after"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
+		arg3, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["after"] = arg3
+	var arg4 *int
+	if tmp, ok := rawArgs["last"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
+		arg4, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["last"] = arg4
+	var arg5 *string
+	if tmp, ok := rawArgs["before"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
+		arg5, err = ec.unmarshalOID2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["before"] = arg5
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_itemsByPublicationUUID_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_items_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 *string
 	if tmp, ok := rawArgs["publicationUUID"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("publicationUUID"))
-		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		arg0, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
 	args["publicationUUID"] = arg0
+	var arg1 *bool
+	if tmp, ok := rawArgs["orderAsc"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderAsc"))
+		arg1, err = ec.unmarshalOBoolean2ᚖbool(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["orderAsc"] = arg1
 	return args, nil
 }
 
@@ -403,7 +540,7 @@ func (ec *executionContext) _Item_uuid(ctx context.Context, field graphql.Collec
 	}
 	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalNID2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Item_publicationUUID(ctx context.Context, field graphql.CollectedField, obj *entity.Item) (ret graphql.Marshaler) {
@@ -639,6 +776,306 @@ func (ec *executionContext) _Item_language_code(ctx context.Context, field graph
 	return ec.marshalOString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _ItemsConnection_totalCount(ctx context.Context, field graphql.CollectedField, obj *model.ItemsConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ItemsConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalOInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ItemsConnection_pageInfo(ctx context.Context, field graphql.CollectedField, obj *model.ItemsConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ItemsConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PageInfo(), nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.PageInfo)
+	fc.Result = res
+	return ec.marshalNPageInfo2githubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐPageInfo(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ItemsConnection_edges(ctx context.Context, field graphql.CollectedField, obj *model.ItemsConnection) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ItemsConnection",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ItemsConnection().Edges(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*model.ItemsEdge)
+	fc.Result = res
+	return ec.marshalOItemsEdge2ᚕᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐItemsEdge(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ItemsEdge_node(ctx context.Context, field graphql.CollectedField, obj *model.ItemsEdge) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ItemsEdge",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Node, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*entity.Item)
+	fc.Result = res
+	return ec.marshalOItem2ᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _ItemsEdge_cursor(ctx context.Context, field graphql.CollectedField, obj *model.ItemsEdge) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "ItemsEdge",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Cursor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PageInfo_hasNextPage(ctx context.Context, field graphql.CollectedField, obj *model.PageInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "PageInfo",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasNextPage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PageInfo_endCursor(ctx context.Context, field graphql.CollectedField, obj *model.PageInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "PageInfo",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.EndCursor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PageInfo_hasPreviousPage(ctx context.Context, field graphql.CollectedField, obj *model.PageInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "PageInfo",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.HasPreviousPage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _PageInfo_startCursor(ctx context.Context, field graphql.CollectedField, obj *model.PageInfo) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "PageInfo",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartCursor, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Query_items(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -655,9 +1092,16 @@ func (ec *executionContext) _Query_items(ctx context.Context, field graphql.Coll
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_items_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Items(rctx)
+		return ec.resolvers.Query().Items(rctx, args["publicationUUID"].(*string), args["orderAsc"].(*bool))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -672,6 +1116,48 @@ func (ec *executionContext) _Query_items(ctx context.Context, field graphql.Coll
 	res := resTmp.([]*entity.Item)
 	fc.Result = res
 	return ec.marshalNItem2ᚕᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Query_itemsConnection(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Query_itemsConnection_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ItemsConnection(rctx, args["publicationUUID"].(*string), args["orderAsc"].(*bool), args["first"].(*int), args["after"].(*string), args["last"].(*int), args["before"].(*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.ItemsConnection)
+	fc.Result = res
+	return ec.marshalNItemsConnection2ᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐItemsConnection(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query_item(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -711,90 +1197,6 @@ func (ec *executionContext) _Query_item(ctx context.Context, field graphql.Colle
 	res := resTmp.(*entity.Item)
 	fc.Result = res
 	return ec.marshalOItem2ᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Query_itemsByPublicationUUID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_itemsByPublicationUUID_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ItemsByPublicationUUID(rctx, args["publicationUUID"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*entity.Item)
-	fc.Result = res
-	return ec.marshalNItem2ᚕᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Query_itemsByPublicationUUIDSortedByPublishedUUID(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_itemsByPublicationUUIDSortedByPublishedUUID_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ItemsByPublicationUUIDSortedByPublishedUUID(rctx, args["publicationUUID"].(string), args["orderAsc"].(*bool))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]*entity.Item)
-	fc.Result = res
-	return ec.marshalNItem2ᚕᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -2031,6 +2433,111 @@ func (ec *executionContext) _Item(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
+var itemsConnectionImplementors = []string{"ItemsConnection"}
+
+func (ec *executionContext) _ItemsConnection(ctx context.Context, sel ast.SelectionSet, obj *model.ItemsConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, itemsConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ItemsConnection")
+		case "totalCount":
+			out.Values[i] = ec._ItemsConnection_totalCount(ctx, field, obj)
+		case "pageInfo":
+			out.Values[i] = ec._ItemsConnection_pageInfo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
+		case "edges":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ItemsConnection_edges(ctx, field, obj)
+				return res
+			})
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var itemsEdgeImplementors = []string{"ItemsEdge"}
+
+func (ec *executionContext) _ItemsEdge(ctx context.Context, sel ast.SelectionSet, obj *model.ItemsEdge) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, itemsEdgeImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ItemsEdge")
+		case "node":
+			out.Values[i] = ec._ItemsEdge_node(ctx, field, obj)
+		case "cursor":
+			out.Values[i] = ec._ItemsEdge_cursor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var pageInfoImplementors = []string{"PageInfo"}
+
+func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *model.PageInfo) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, pageInfoImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PageInfo")
+		case "hasNextPage":
+			out.Values[i] = ec._PageInfo_hasNextPage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "endCursor":
+			out.Values[i] = ec._PageInfo_endCursor(ctx, field, obj)
+		case "hasPreviousPage":
+			out.Values[i] = ec._PageInfo_hasPreviousPage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "startCursor":
+			out.Values[i] = ec._PageInfo_startCursor(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -2060,6 +2567,20 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				}
 				return res
 			})
+		case "itemsConnection":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_itemsConnection(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
+				return res
+			})
 		case "item":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -2069,34 +2590,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_item(ctx, field)
-				return res
-			})
-		case "itemsByPublicationUUID":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_itemsByPublicationUUID(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
-		case "itemsByPublicationUUIDSortedByPublishedUUID":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_itemsByPublicationUUIDSortedByPublishedUUID(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		case "__type":
@@ -2426,6 +2919,24 @@ func (ec *executionContext) marshalNItem2ᚕᚖgithubᚗcomᚋTarickᚋnacaᚑit
 	return ret
 }
 
+func (ec *executionContext) marshalNItemsConnection2githubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐItemsConnection(ctx context.Context, sel ast.SelectionSet, v model.ItemsConnection) graphql.Marshaler {
+	return ec._ItemsConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNItemsConnection2ᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐItemsConnection(ctx context.Context, sel ast.SelectionSet, v *model.ItemsConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	return ec._ItemsConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPageInfo2githubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v model.PageInfo) graphql.Marshaler {
+	return ec._PageInfo(ctx, sel, &v)
+}
+
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -2709,11 +3220,97 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	return graphql.MarshalBoolean(*v)
 }
 
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalID(*v)
+}
+
+func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	return graphql.MarshalInt(v)
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalInt(*v)
+}
+
 func (ec *executionContext) marshalOItem2ᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋentityᚐItem(ctx context.Context, sel ast.SelectionSet, v *entity.Item) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._Item(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOItemsEdge2ᚕᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐItemsEdge(ctx context.Context, sel ast.SelectionSet, v []*model.ItemsEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOItemsEdge2ᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐItemsEdge(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+	return ret
+}
+
+func (ec *executionContext) marshalOItemsEdge2ᚖgithubᚗcomᚋTarickᚋnacaᚑitemsᚋinternalᚋgraphᚋmodelᚐItemsEdge(ctx context.Context, sel ast.SelectionSet, v *model.ItemsEdge) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ItemsEdge(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2string(ctx context.Context, v interface{}) (string, error) {
