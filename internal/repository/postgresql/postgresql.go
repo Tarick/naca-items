@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	sqlQueryItem string = "select uuid, publication_uuid, published_date, title, description, content, url, language_code from items"
+	sqlQueryItem string = "select uuid, publication_uuid, published_date, title, description, content, url, language_code from items "
 )
 
 // Config defines database configuration, usable for Viper
@@ -77,7 +77,7 @@ func New(databaseConfig *Config, logger pgx.Logger) (*ItemsRepository, error) {
 func (repository *ItemsRepository) GetItemByUUID(ctx context.Context, UUID uuid.UUID) (*entity.Item, error) {
 	item := entity.NewItem()
 	err := repository.pool.QueryRow(ctx,
-		"select uuid, publication_uuid, published_date, title, description, content, url, language_code from items where uuid=$1", UUID).Scan(
+		"select uuid, publication_uuid, published_date, title, description, content, url, language_code from items join item_state is2 on items.state_id=is2.id where is2.type='valid' and uuid=$1", UUID).Scan(
 		&item.UUID,
 		&item.PublicationUUID,
 		&item.PublishedDate,
@@ -103,7 +103,7 @@ func (repository *ItemsRepository) GetItems(ctx context.Context) ([]*entity.Item
 
 // GetItemsByPublicationUUID returns slice of items pointers filtered by PublicationUUID
 func (repository *ItemsRepository) GetItemsByPublicationUUID(ctx context.Context, publicationUUID uuid.UUID) ([]*entity.Item, error) {
-	queryString := sqlQueryItem + " where publication_uuid=$1"
+	queryString := sqlQueryItem + " join item_state is2 on items.state_id=is2.id where is2.type='valid' and publication_uuid=$1"
 	return repository.getItems(ctx, queryString, publicationUUID)
 }
 
@@ -113,7 +113,7 @@ func (repository *ItemsRepository) GetItemsByPublicationUUIDSortByPublishedDate(
 	if sortAsc {
 		sortOrder = "asc"
 	}
-	queryString := fmt.Sprint(sqlQueryItem, " where publication_uuid=$1 order by published_date ", sortOrder)
+	queryString := fmt.Sprint(sqlQueryItem, " join item_state is2 on items.state_id=is2.id where is2.type='valid' and publication_uuid=$1 order by published_date ", sortOrder)
 	return repository.getItems(ctx, queryString, publicationUUID)
 }
 

@@ -5,6 +5,7 @@ package resolver
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Tarick/naca-items/internal/entity"
 	"github.com/Tarick/naca-items/internal/graph/generated"
@@ -55,16 +56,17 @@ func (r *queryResolver) ItemsConnection(ctx context.Context, publicationUUID *st
 	if len(fetchedItems) == 0 {
 		return &model.ItemsConnection{
 			Items:     fetchedItems,
-			From:      uuidImpl.Nil,
-			To:        uuidImpl.Nil,
 			FromIndex: 0,
 			ToIndex:   0,
 		}, nil
 	}
+	// Default slicing - the whole slice
 	fromIndex := 0
-	from := fetchedItems[fromIndex].UUID
+	// Last item UUID
+	toIndex := len(fetchedItems) - 1
 	if after != nil {
-		from, err = model.DecodeCursor(*after)
+		// from := fetchedItems[fromIndex].UUID
+		from, err := model.DecodeCursor(*after)
 		if err != nil {
 			return nil, err
 		}
@@ -72,22 +74,45 @@ func (r *queryResolver) ItemsConnection(ctx context.Context, publicationUUID *st
 		if err != nil {
 			return nil, err
 		}
+		// with 'after', we return the next element
+		fromIndex++
 	}
-	// Last item UUID
-	toIndex := len(fetchedItems) - 1
-	to := fetchedItems[toIndex].UUID
-	if first != nil {
-		toIndex = fromIndex + *first - 1
-		if toIndex > len(fetchedItems)-1 {
-			toIndex = len(fetchedItems) - 1
+	if before != nil {
+		to, err := model.DecodeCursor(*before)
+		if err != nil {
+			return nil, err
 		}
-		to = fetchedItems[toIndex].UUID
+		toIndex, err = getItemIndexByUUID(fetchedItems, to)
+		if err != nil {
+			return nil, err
+		}
+		// with 'before', we return the previous elements
+		toIndex--
+		if fromIndex > toIndex {
+			return nil, fmt.Errorf("'before' and 'after' cursors yielded negative slice of elements, incorrect cursors or changed order assumed")
+		}
+	}
+	if first != nil {
+		if *first < 0 {
+			return nil, fmt.Errorf("'first' parameter cannot be negative")
+		}
+		toFirstIndex := fromIndex + *first - 1
+		if toFirstIndex < toIndex {
+			toIndex = toFirstIndex
+		}
+	}
+	if last != nil {
+		if *last < 0 {
+			return nil, fmt.Errorf("'last' parameter cannot be negative")
+		}
+		fromLastIndex := toIndex - *last + 1
+		if fromLastIndex > fromIndex {
+			fromIndex = fromLastIndex
+		}
 	}
 
 	return &model.ItemsConnection{
 		Items:     fetchedItems,
-		From:      from,
-		To:        to,
 		FromIndex: fromIndex,
 		ToIndex:   toIndex,
 	}, nil
