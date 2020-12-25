@@ -23,6 +23,8 @@ type ItemsRepository interface {
 	GetItems(context.Context) ([]*entity.Item, error)
 	GetItemsByPublicationUUID(context.Context, uuidImpl.UUID) ([]*entity.Item, error)
 	GetItemsByPublicationUUIDSortByPublishedDate(context.Context, uuidImpl.UUID, bool) ([]*entity.Item, error)
+	// Needed to healthcheck
+	Healthcheck(context.Context) error
 }
 
 func getItemIndexByUUID(arr []*entity.Item, id uuidImpl.UUID) (int, error) {

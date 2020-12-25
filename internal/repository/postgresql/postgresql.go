@@ -32,9 +32,9 @@ type Config struct {
 	MaxConnections int32  `mapstructure:"max_connections"`
 }
 
-// ItemsRepository is the main repository struct
-// Use ItemsRepository.pool to make queries
-type ItemsRepository struct {
+// Repository is the main repository struct
+// Use Repository.pool to make queries
+type Repository struct {
 	pool *pgxpool.Pool
 }
 
@@ -44,7 +44,7 @@ func NewZapLogger(logger *zap.Logger) *zapadapter.Logger {
 }
 
 // New creates database pool configuration
-func New(databaseConfig *Config, logger pgx.Logger) (*ItemsRepository, error) {
+func New(databaseConfig *Config, logger pgx.Logger) (*Repository, error) {
 	postgresDataSource := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		databaseConfig.Username,
 		databaseConfig.Password,
@@ -70,11 +70,11 @@ func New(databaseConfig *Config, logger pgx.Logger) (*ItemsRepository, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ItemsRepository{pool: pool}, nil
+	return &Repository{pool: pool}, nil
 }
 
 // GetItemByUUID returns item found by UUID
-func (repository *ItemsRepository) GetItemByUUID(ctx context.Context, UUID uuid.UUID) (*entity.Item, error) {
+func (repository *Repository) GetItemByUUID(ctx context.Context, UUID uuid.UUID) (*entity.Item, error) {
 	item := entity.NewItem()
 	err := repository.pool.QueryRow(ctx,
 		"select uuid, publication_uuid, published_date, title, description, content, url, language_code from items join item_state is2 on items.state_id=is2.id where is2.type='valid' and uuid=$1", UUID).Scan(
@@ -97,18 +97,18 @@ func (repository *ItemsRepository) GetItemByUUID(ctx context.Context, UUID uuid.
 }
 
 // GetItems returns slice of items pointers
-func (repository *ItemsRepository) GetItems(ctx context.Context) ([]*entity.Item, error) {
+func (repository *Repository) GetItems(ctx context.Context) ([]*entity.Item, error) {
 	return repository.getItems(ctx, sqlQueryItem)
 }
 
 // GetItemsByPublicationUUID returns slice of items pointers filtered by PublicationUUID
-func (repository *ItemsRepository) GetItemsByPublicationUUID(ctx context.Context, publicationUUID uuid.UUID) ([]*entity.Item, error) {
+func (repository *Repository) GetItemsByPublicationUUID(ctx context.Context, publicationUUID uuid.UUID) ([]*entity.Item, error) {
 	queryString := sqlQueryItem + " join item_state is2 on items.state_id=is2.id where is2.type='valid' and publication_uuid=$1"
 	return repository.getItems(ctx, queryString, publicationUUID)
 }
 
 // GetItemsByPublicationUUIDSortByPublishedDate returns slice of items pointers filtered by PublicationUUID and sorted by publishedDate
-func (repository *ItemsRepository) GetItemsByPublicationUUIDSortByPublishedDate(ctx context.Context, publicationUUID uuid.UUID, sortAsc bool) ([]*entity.Item, error) {
+func (repository *Repository) GetItemsByPublicationUUIDSortByPublishedDate(ctx context.Context, publicationUUID uuid.UUID, sortAsc bool) ([]*entity.Item, error) {
 	var sortOrder string = "desc"
 	if sortAsc {
 		sortOrder = "asc"
@@ -118,7 +118,7 @@ func (repository *ItemsRepository) GetItemsByPublicationUUIDSortByPublishedDate(
 }
 
 // getItems returns slice of items pointers, retrieved using queryString with any parameters
-func (repository *ItemsRepository) getItems(ctx context.Context, queryString string, args ...interface{}) ([]*entity.Item, error) {
+func (repository *Repository) getItems(ctx context.Context, queryString string, args ...interface{}) ([]*entity.Item, error) {
 	rows, err := repository.pool.Query(ctx, queryString, args...)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func (repository *ItemsRepository) getItems(ctx context.Context, queryString str
 
 }
 
-func (repository *ItemsRepository) Create(ctx context.Context, item *entity.Item) error {
+func (repository *Repository) Create(ctx context.Context, item *entity.Item) error {
 	_, err := repository.pool.Exec(ctx, `insert into items (
 		uuid,
 		publication_uuid,
@@ -163,7 +163,7 @@ func (repository *ItemsRepository) Create(ctx context.Context, item *entity.Item
 	return err
 }
 
-func (repository *ItemsRepository) Delete(ctx context.Context, UUID uuid.UUID) error {
+func (repository *Repository) Delete(ctx context.Context, UUID uuid.UUID) error {
 	result, err := repository.pool.Exec(ctx, "delete from items where uuid=$1", UUID)
 	if err != nil {
 		return err
@@ -174,7 +174,7 @@ func (repository *ItemsRepository) Delete(ctx context.Context, UUID uuid.UUID) e
 	return err
 }
 
-func (repository *ItemsRepository) ItemExists(ctx context.Context, item *entity.Item) (bool, error) {
+func (repository *Repository) ItemExists(ctx context.Context, item *entity.Item) (bool, error) {
 	var exists bool
 	row := repository.pool.QueryRow(ctx, "select exists (select 1 from items where uuid=$1)", item.UUID)
 	if err := row.Scan(&exists); err != nil {
@@ -184,4 +184,17 @@ func (repository *ItemsRepository) ItemExists(ctx context.Context, item *entity.
 		return true, nil
 	}
 	return false, nil
+}
+
+// Healthcheck is needed for application healtchecks
+func (repository *Repository) Healthcheck(ctx context.Context) error {
+	var exists bool
+	row := repository.pool.QueryRow(ctx, "select exists (select 1 from items limit 1)")
+	if err := row.Scan(&exists); err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
+	return fmt.Errorf("failure checking access to 'items' table")
 }
