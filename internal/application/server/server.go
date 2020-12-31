@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	// "github.com/99designs/gqlgen/graphql/playground"
 	"github.com/Tarick/naca-items/internal/graph/generated"
 	"github.com/Tarick/naca-items/internal/graph/resolver"
@@ -66,6 +68,9 @@ func New(serverConfig Config, logger Logger, itemsRepository resolver.ItemsRepos
 		w.Write([]byte("."))
 	},
 	)
+	// Prometheus metrics
+	r.Handle("/metrics", promhttp.Handler())
+
 	// r.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	r.Route("/query", func(r chi.Router) {
 		graphqlSchema := generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{ItemsRepository: itemsRepository}})

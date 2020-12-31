@@ -1,4 +1,4 @@
-FROM golang:1.15.5-alpine3.12 as build
+FROM golang:1.15.6-alpine3.12 as build
 RUN apk --no-cache add git
 WORKDIR /app
 COPY go.mod .
