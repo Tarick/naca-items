@@ -12,7 +12,6 @@ import (
 	"github.com/Tarick/naca-items/internal/graph/resolver"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/go-chi/cors"
 )
 
 // Server defines HTTP application
@@ -38,47 +37,39 @@ func New(serverConfig Config, logger Logger, itemsRepository resolver.ItemsRepos
 		logger:     logger,
 		repository: itemsRepository,
 	}
-	r.Use(middleware.RequestID)
-	r.Use(middlewareLogger(logger))
-	// Basic CORS to allow API calls from browsers (Swagger-UI)
-	// for more ideas, see: https://developer.github.com/v3/#cross-origin-resource-sharing
-	r.Use(cors.Handler(cors.Options{
-		// Use this to allow specific origin hosts
-		AllowedOrigins: []string{"http://localhost:8080"},
-		// AllowedOrigins: []string{"*"},
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
-	}))
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(time.Duration(serverConfig.RequestTimeout) * time.Second))
-	// Healthcheck could be moved back to middleware in case of auth meddling
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		if err := s.repository.Healthcheck(r.Context()); err != nil {
-			s.logger.Error("Healthcheck: repository check failed with: ", err)
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("Repository is unailable"))
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("."))
-	},
-	)
-	// Prometheus metrics
-	r.Handle("/metrics", promhttp.Handler())
+	r.Group(func(r chi.Router) {
+		// Healthcheck could be moved back to middleware in case of auth meddling
+		r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "text/plain")
+			if err := s.repository.Healthcheck(r.Context()); err != nil {
+				s.logger.Error("Healthcheck: repository check failed with: ", err)
+				w.WriteHeader(http.StatusServiceUnavailable)
+				w.Write([]byte("Repository is unailable"))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("."))
+		},
+		)
+		// Prometheus metrics
+		r.Handle("/metrics", promhttp.Handler())
+	})
+	r.Group(func(r chi.Router) {
+		// r.Handle("/", playground.Handler("GraphQL playground", "/query"))
+		r.Use(middleware.RequestID)
+		r.Use(middlewareLogger(logger))
+		r.Route("/query", func(r chi.Router) {
+			graphqlSchema := generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{ItemsRepository: itemsRepository}})
+			graphqlSrv := handler.NewDefaultServer(graphqlSchema)
+			// Set 1 second caching and requests coalescing to avoid requests stampede. Beware of any user specific responses.
+			// cached := stampede.Handler(512, 1*time.Second)
+			// r.With(cached).Get("/", graphsrv)
+			r.Handle("/", graphqlSrv)
 
-	// r.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	r.Route("/query", func(r chi.Router) {
-		graphqlSchema := generated.NewExecutableSchema(generated.Config{Resolvers: &resolver.Resolver{ItemsRepository: itemsRepository}})
-		graphqlSrv := handler.NewDefaultServer(graphqlSchema)
-		// Set 1 second caching and requests coalescing to avoid requests stampede. Beware of any user specific responses.
-		// cached := stampede.Handler(512, 1*time.Second)
-		// r.With(cached).Get("/", graphsrv)
-		r.Handle("/", graphqlSrv)
+		})
+
 	})
 	return s
 }

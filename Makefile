@@ -47,6 +47,8 @@ generate:
 build-api-image:
 	@echo "[INFO] Building API container image"
 	buildctl build --frontend dockerfile.v0 --opt build-arg:BUILD_VERSION=${BUILD_VERSION} \
+	--export-cache type=local,dest=/var/tmp/buildkitdcache \
+	--import-cache type=local,src=/var/tmp/buildkitdcache \
 	--local context=. --local dockerfile=cmd/items-api  \
 	--output type=image,\"name=${CONTAINER_IMAGE_REGISTRY}/items-api:${BUILD_BRANCH}-${BUILD_HASH},${CONTAINER_IMAGE_REGISTRY}/items-api:${BUILD_VERSION}\"
 	@echo "[INFO] Image built successfully"
@@ -59,6 +61,8 @@ build-worker: deps # Builds worker binary
 build-worker-image: # Builds worker container image
 	@echo "[INFO] Building Worker container image"
 	buildctl build --frontend dockerfile.v0 --opt build-arg:BUILD_VERSION=${BUILD_VERSION} \
+	--export-cache type=local,dest=/var/tmp/buildkitdcache \
+	--import-cache type=local,src=/var/tmp/buildkitdcache \
 	--local context=. --local dockerfile=cmd/items-worker  \
 	--output type=image,\"name=${CONTAINER_IMAGE_REGISTRY}/items-worker:${BUILD_BRANCH}-${BUILD_HASH},${CONTAINER_IMAGE_REGISTRY}/items-worker:${BUILD_VERSION}\"
 	@echo "[INFO] Image built successfully"
@@ -66,6 +70,8 @@ build-worker-image: # Builds worker container image
 build-sql-migrations-image: # Builds sql-migrations container image
 	@echo "[INFO] Building SQL migrations image"
 	buildctl build --frontend dockerfile.v0 --opt build-arg:BUILD_VERSION=${BUILD_VERSION} \
+	--export-cache type=local,dest=/var/tmp/buildkitdcache \
+	--import-cache type=local,src=/var/tmp/buildkitdcache \
 	--local context=. --local dockerfile=migrations/  \
 	--output type=image,\"name=${CONTAINER_IMAGE_REGISTRY}/items-sql-migrations:${BUILD_BRANCH}-${BUILD_HASH},${CONTAINER_IMAGE_REGISTRY}/items-sql-migrations:${BUILD_VERSION}\"
 	@echo "[INFO] Image built successfully"
@@ -73,10 +79,20 @@ build-sql-migrations-image: # Builds sql-migrations container image
 build-and-deploy: build-images deploy-to-local-k8s ## Builds all images and deploys to local k8s
 	@echo "[INFO] built and deployed"
 
-deploy-to-local-k8s: # Deploys built images to local k8s
+deploy-to-local-k8s: build-images # Deploys built images to local k8s
 	@echo "[INFO] Deploying current Items to local k8s service"
 	@echo "[INFO] Deleting old SQL migrations"
 	helmfile --environment local --selector app_name=items-sql-migrations -f ../naca-ops-config/helm/helmfile.yaml destroy
 	@echo "[INFO] Deploying Items images with tag ${BUILD_VERSION}"
 	ITEMS_TAG=${BUILD_VERSION} helmfile --environment local --selector tier=naca-items -f ../naca-ops-config/helm/helmfile.yaml sync --skip-deps
 	@echo "[INFO] Deployed to local k8s"
+
+deploy-api-to-local-k8s: build-api-image
+	@echo "[INFO] Deploying API to local k8s service"
+	ITEMS_TAG=${BUILD_VERSION} helmfile --environment local --selector app_name=items-api -f ../naca-ops-config/helm/helmfile.yaml sync --skip-deps
+	@echo "[INFO] Deployed API to local k8s"
+
+deploy-worker-to-local-k8s: build-worker-image
+	@echo "[INFO] Deploying worker to local k8s service"
+	ITEMS_TAG=${BUILD_VERSION} helmfile --environment local --selector app_name=items-worker -f ../naca-ops-config/helm/helmfile.yaml sync --skip-deps
+	@echo "[INFO] Deployed worker to local k8s"
