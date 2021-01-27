@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/Tarick/naca-items/internal/entity"
+	opentracing "github.com/opentracing/opentracing-go"
+	otLog "github.com/opentracing/opentracing-go/log"
 
 	"go.uber.org/zap"
 
@@ -35,7 +37,8 @@ type Config struct {
 // Repository is the main repository struct
 // Use Repository.pool to make queries
 type Repository struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
+	tracer opentracing.Tracer
 }
 
 // NewZapLogger returns logger for repository based on uber zap
@@ -44,7 +47,7 @@ func NewZapLogger(logger *zap.Logger) *zapadapter.Logger {
 }
 
 // New creates database pool configuration
-func New(databaseConfig *Config, logger pgx.Logger) (*Repository, error) {
+func New(databaseConfig *Config, logger pgx.Logger, tracer opentracing.Tracer) (*Repository, error) {
 	postgresDataSource := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		databaseConfig.Username,
 		databaseConfig.Password,
@@ -70,14 +73,18 @@ func New(databaseConfig *Config, logger pgx.Logger) (*Repository, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Repository{pool: pool}, nil
+	return &Repository{pool: pool, tracer: tracer}, nil
 }
 
 // GetItemByUUID returns item found by UUID
 func (repository *Repository) GetItemByUUID(ctx context.Context, UUID uuid.UUID) (*entity.Item, error) {
+	query := "select uuid, publication_uuid, published_date, title, description, content, url, language_code from items join item_state is2 on items.state_id=is2.id where is2.type='valid' and uuid=$1"
+	span, ctx := repository.setupTracingSpan(ctx, "get-item-by-uuid", query)
+	defer span.Finish()
+	span.SetTag("item.UUID", UUID)
+
 	item := entity.NewItem()
-	err := repository.pool.QueryRow(ctx,
-		"select uuid, publication_uuid, published_date, title, description, content, url, language_code from items join item_state is2 on items.state_id=is2.id where is2.type='valid' and uuid=$1", UUID).Scan(
+	err := repository.pool.QueryRow(ctx, query, UUID).Scan(
 		&item.UUID,
 		&item.PublicationUUID,
 		&item.PublishedDate,
@@ -88,11 +95,18 @@ func (repository *Repository) GetItemByUUID(ctx context.Context, UUID uuid.UUID)
 		&item.LanguageCode,
 	)
 	if err != nil && err == pgx.ErrNoRows {
+		span.LogFields(
+			otLog.Error(err),
+		)
 		return nil, nil
 	}
 	if err != nil {
+		span.LogFields(
+			otLog.Error(err),
+		)
 		return nil, err
 	}
+	span.LogKV("event", "fetched item")
 	return item, nil
 }
 
@@ -119,8 +133,14 @@ func (repository *Repository) GetItemsByPublicationUUIDSortByPublishedDate(ctx c
 
 // getItems returns slice of items pointers, retrieved using queryString with any parameters
 func (repository *Repository) getItems(ctx context.Context, queryString string, args ...interface{}) ([]*entity.Item, error) {
+	span, ctx := repository.setupTracingSpan(ctx, "get-items", queryString)
+	defer span.Finish()
+
 	rows, err := repository.pool.Query(ctx, queryString, args...)
 	if err != nil {
+		span.LogFields(
+			otLog.Error(err),
+		)
 		return nil, err
 	}
 	defer rows.Close()
@@ -142,45 +162,67 @@ func (repository *Repository) getItems(ctx context.Context, queryString string, 
 		items = append(items, item)
 	}
 	if rows.Err() != nil {
+		span.LogFields(
+			otLog.Error(err),
+		)
 		return nil, err
 	}
+	span.LogKV("event", "fetched items")
+	span.LogFields(
+		otLog.Int("itemsNumber", len(items)),
+	)
 	return items, nil
-
 }
 
 func (repository *Repository) Create(ctx context.Context, item *entity.Item) error {
-	_, err := repository.pool.Exec(ctx, `insert into items (
-		uuid,
-		publication_uuid,
-		published_date,
-		title,
-		description,
-		content,
-		url,
-		language_code,
-		state_id) select $1, $2, $3, $4, $5, $6, $7, $8, id from item_state where type='valid'`,
-		item.UUID, item.PublicationUUID, item.PublishedDate, item.Title, item.Description, item.Content, item.URL, item.LanguageCode)
+	query := "insert into items (uuid, publication_uuid, published_date, title, description, content, url, language_code, state_id) select $1, $2, $3, $4, $5, $6, $7, $8, id from item_state where type='valid'"
+	span, ctx := repository.setupTracingSpan(ctx, "create-item", query)
+	defer span.Finish()
+	span.SetTag("item.UUID", item.UUID)
+	span.SetTag("item.PublicationUUID", item.PublicationUUID)
+	_, err := repository.pool.Exec(ctx, query, item.UUID, item.PublicationUUID, item.PublishedDate, item.Title, item.Description, item.Content, item.URL, item.LanguageCode)
+	if err != nil {
+		span.LogFields(
+			otLog.Error(err),
+		)
+	}
 	return err
 }
 
 func (repository *Repository) Delete(ctx context.Context, UUID uuid.UUID) error {
-	result, err := repository.pool.Exec(ctx, "delete from items where uuid=$1", UUID)
+	query := "delete from items where uuid=$1"
+	span, ctx := repository.setupTracingSpan(ctx, "delete-item-by-uuid", query)
+	defer span.Finish()
+	span.SetTag("item.UUID", UUID)
+	result, err := repository.pool.Exec(ctx, query, UUID)
 	if err != nil {
+		span.LogFields(
+			otLog.Error(err),
+		)
 		return err
 	}
 	if result.RowsAffected() != 1 {
 		return errors.New(fmt.Sprint("item delete from db execution didn't delete record for UUID ", UUID))
 	}
-	return err
+	return nil
 }
 
 func (repository *Repository) ItemExists(ctx context.Context, item *entity.Item) (bool, error) {
+	query := "select exists (select 1 from items where uuid=$1)"
+	span, ctx := repository.setupTracingSpan(ctx, "item-exists", query)
+	defer span.Finish()
+	span.SetTag("item.UUID", item.UUID)
+
 	var exists bool
-	row := repository.pool.QueryRow(ctx, "select exists (select 1 from items where uuid=$1)", item.UUID)
+	row := repository.pool.QueryRow(ctx, query, item.UUID)
 	if err := row.Scan(&exists); err != nil {
+		span.LogFields(
+			otLog.Error(err),
+		)
 		return false, err
 	}
 	if exists == true {
+		span.LogKV("event", "item exists")
 		return true, nil
 	}
 	return false, nil
@@ -197,4 +239,12 @@ func (repository *Repository) Healthcheck(ctx context.Context) error {
 		return nil
 	}
 	return fmt.Errorf("failure checking access to 'items' table")
+}
+
+func (repository *Repository) setupTracingSpan(ctx context.Context, name string, query string) (opentracing.Span, context.Context) {
+	span, ctx := opentracing.StartSpanFromContextWithTracer(ctx, repository.tracer, name)
+	span.SetTag("component", "repository")
+	span.SetTag("db.type", "sql")
+	span.SetTag("db.query", query)
+	return span, ctx
 }

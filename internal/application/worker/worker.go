@@ -6,11 +6,6 @@ import (
 	"syscall"
 )
 
-type Worker interface {
-	Start() error
-	Stop()
-}
-
 type MessageConsumer interface {
 	Start() error
 	Stop()
@@ -26,10 +21,11 @@ func New(consumer MessageConsumer, logger Logger) *worker {
 }
 
 // StartConsume launches worker
-func (w *worker) Start() {
+func (w *worker) Start() error {
 	// TODO: error handling
 	if err := w.consumer.Start(); err != nil {
-		w.logger.Fatal("Failure starting consumer: ", err)
+		w.logger.Error("Failure starting consumer: ", err)
+		return err
 	}
 	w.logger.Info("Started consumer")
 	// Kill signal handling
@@ -44,6 +40,7 @@ func (w *worker) Start() {
 	<-done
 	// Block, wait for signal above, make it stop if terminating
 	w.Stop()
+	return nil
 }
 func (w *worker) Stop() {
 	w.consumer.Stop()

@@ -19,11 +19,12 @@ type MessageType uint
 // MessageBody is the useful payload of message. Do not add methods to this interface, must satisfy json.RawMessage
 type MessageBody interface{}
 
-// MessageEnvelope defines shared fields for MQ message with message type as action key and Msg as actual message body content
+// MessageEnvelope defines shared fields for MQ message with message type as action key, any metadata (e.g. opentracing) and Msg as actual message body content
 // This is top level type in message body.
 type MessageEnvelope struct {
-	Type MessageType `json:"type,int"`
-	Msg  MessageBody
+	Type     MessageType       `json:"type,int"`
+	Metadata map[string]string `json:"metadata,string"`
+	Msg      MessageBody
 }
 
 //NewItemBody defines New Item message body
