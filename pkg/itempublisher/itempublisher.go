@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Tarick/naca-items/internal/messaging"
 	"github.com/Tarick/naca-items/internal/messaging/nsqclient/producer"
+	"github.com/Tarick/naca-items/internal/processor"
 	"github.com/gofrs/uuid"
 )
 
@@ -20,6 +20,7 @@ type messagePublisher struct {
 }
 
 func (p *messagePublisher) PublishNewItem(
+	metadata map[string]string,
 	publicationUUID uuid.UUID,
 	title string,
 	description string,
@@ -28,10 +29,11 @@ func (p *messagePublisher) PublishNewItem(
 	languageCode string,
 	publishedDate time.Time) error {
 
-	message, err := messaging.NewItemMessageEnvelope(publicationUUID, title, description, content, url, languageCode, publishedDate)
+	message, err := processor.NewItemMessageEnvelope(metadata, publicationUUID, title, description, content, url, languageCode, publishedDate)
 	if err != nil {
 		return err
 	}
+
 	bytes, err := json.Marshal(message)
 	if err != nil {
 		return err
@@ -40,7 +42,6 @@ func (p *messagePublisher) PublishNewItem(
 }
 
 // New creates message publisher
-// Currently bound to NSQ publisher.
 func New(host string, topic string) (*messagePublisher, error) {
 	producer, err := producer.New(&producer.MessageProducerConfig{Host: host, Topic: topic})
 	if err != nil {

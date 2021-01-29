@@ -1,4 +1,4 @@
-package messaging
+package processor
 
 import (
 	"time"
@@ -34,6 +34,7 @@ type NewItemBody struct {
 
 //NewItemMessageEnvelope creates message envelope with message type and basic item
 func NewItemMessageEnvelope(
+	metadata map[string]string,
 	publicationUUID uuid.UUID,
 	title string,
 	description string,
@@ -53,8 +54,10 @@ func NewItemMessageEnvelope(
 	if err := itemCore.Validate(); err != nil {
 		return &MessageEnvelope{}, err
 	}
+
 	return &MessageEnvelope{
-		Type: NewItemType,
-		Msg:  NewItemBody{itemCore},
+		Type:     NewItemType,
+		Msg:      NewItemBody{itemCore},
+		Metadata: metadata,
 	}, nil
 }

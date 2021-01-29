@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/Tarick/naca-items/internal/entity"
-	"github.com/Tarick/naca-items/internal/messaging"
 	"github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 	otLog "github.com/opentracing/opentracing-go/log"
@@ -38,7 +37,7 @@ func New(repository ItemsRepository, logger Logger, tracer opentracing.Tracer) *
 // It uses json.RawMessage to delay the unmarshalling of message content - Type is unmarshalled first to figure out what type of message it is.
 func (p *processor) Process(data []byte) error {
 	var msg json.RawMessage
-	message := messaging.MessageEnvelope{Msg: &msg}
+	message := MessageEnvelope{Msg: &msg}
 	if err := json.Unmarshal(data, &message); err != nil {
 		return err
 	}
@@ -53,8 +52,8 @@ func (p *processor) Process(data []byte) error {
 	ctx := opentracing.ContextWithSpan(context.Background(), span)
 
 	switch message.Type {
-	case messaging.NewItemType:
-		var msgBody messaging.NewItemBody
+	case NewItemType:
+		var msgBody NewItemBody
 		if err := json.Unmarshal(msg, &msgBody); err != nil {
 			p.logger.Error("Failure unmarshalling body content: ", err)
 			return err

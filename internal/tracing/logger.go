@@ -1,6 +1,8 @@
 package tracing
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 )
 
@@ -10,19 +12,19 @@ type zapLogger struct {
 	logger *zap.SugaredLogger
 }
 
-// Info logs an info msg with fields
+// Info logs an info msg
 func (l zapLogger) Infof(msg string, args ...interface{}) {
-	l.logger.Info(msg, args)
+	l.logger.Info(fmt.Sprintf(msg, args...))
 }
 
-// Error logs an error msg with fields
+// Error logs an error msg
 func (l zapLogger) Error(msg string) {
 	l.logger.Error(msg)
 }
 
-// Info logs an info msg with fields
+// Debugf logs an debug msg
 func (l zapLogger) Debugf(msg string, args ...interface{}) {
-	l.logger.Debug(msg, args)
+	l.logger.Debug(fmt.Sprintf(msg, args...))
 }
 
 func NewZapLogger(logger *zap.SugaredLogger) *zapLogger {
